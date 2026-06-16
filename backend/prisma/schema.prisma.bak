@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Core System
+model Owner {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  mobile       String    @unique
+  passwordHash String
+  pushToken    String?
+  libraries    Library[]
+  createdAt    DateTime  @default(now())
+}
+
+model Library {
+  id            String         @id @default(uuid())
+  ownerId       String
+  name          String
+  address       String?
+  totalSeats    Int
+  owner         Owner          @relation(fields: [ownerId], references: [id])
+  students      Student[]
+  seats         Seat[]
+  subscriptions Subscription[]
+  feeRecords    FeeRecord[]
+  notifications Notification[]
+}
+
+// SaaS Subscription
+model Plan {
+  id            String         @id @default(uuid())
+  name          String
+  maxStudents   Int
+  price         Float
+  durationDays  Int
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id        String   @id @default(uuid())
+  libraryId String
+  planId    String
+  status    String // ACTIVE, EXPIRED, TRIAL
+  startDate DateTime
+  endDate   DateTime
+  library   Library  @relation(fields: [libraryId], references: [id])
+  plan      Plan     @relation(fields: [planId], references: [id])
+}
+
+// Tenant Data
+model Student {
+  id           String       @id @default(uuid())
+  libraryId    String
+  name         String
+  mobile       String
+  parentMobile String?
+  address      String?
+  notes        String?
+  status       String // ACTIVE, EXPIRED, LEFT
+  seat         Seat?
+  memberships  Membership[]
+  library      Library      @relation(fields: [libraryId], references: [id])
+  feeRecords   FeeRecord[]
+}
+
+model Seat {
+  id         String   @id @default(uuid())
+  libraryId  String
+  seatNumber String
+  studentId  String?  @unique
+  student    Student? @relation(fields: [studentId], references: [id])
+  library    Library  @relation(fields: [libraryId], references: [id])
+}
+
+model Membership {
+  id        String   @id @default(uuid())
+  libraryId String
+  studentId String
+  startDate DateTime
+  endDate   DateTime
+  feeAmount Float
+  student   Student  @relation(fields: [studentId], references: [id])
+}
+
+model FeeRecord {
+  id            String   @id @default(uuid())
+  libraryId     String
+  studentId     String
+  amount        Float
+  paymentDate   DateTime
+  paymentMethod String // CASH, UPI, BANK
+  student       Student  @relation(fields: [studentId], references: [id])
+  library       Library  @relation(fields: [libraryId], references: [id])
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  libraryId String
+  action    String // e.g., "STUDENT_CREATED", "FEE_PAID"
+  details   Json
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  libraryId String
+  title     String
+  message   String
+  type      String // e.g., "EXPIRY_WARNING", "FEE_REMINDER"
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  library   Library  @relation(fields: [libraryId], references: [id])
+}

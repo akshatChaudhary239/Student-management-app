@@ -1,0 +1,103 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ActivityLog {
+  id             String   @id
+  organizationId String
+  action         String
+  details        Json
+  createdAt      DateTime @default(now())
+}
+
+model FeeRecord {
+  id             String   @id
+  organizationId String
+  memberId       String
+  amount         Float
+  paymentDate    DateTime
+  paymentMethod  String
+}
+
+model Member {
+  id              String    @id
+  organizationId  String
+  name            String
+  mobile          String
+  parentMobile    String?
+  address         String?
+  notes           String?
+  status          String
+  joiningDate     DateTime  @default(now())
+  membershipStart DateTime?
+  membershipEnd   DateTime?
+}
+
+model Membership {
+  id             String   @id
+  organizationId String
+  memberId       String
+  startDate      DateTime
+  endDate        DateTime
+  feeAmount      Float
+}
+
+model Notification {
+  id             String   @id
+  organizationId String
+  title          String
+  message        String
+  type           String
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
+
+model Organization {
+  id             String   @id(map: "Library_pkey")
+  ownerId        String
+  businessName   String
+  address        String?
+  totalResources Int
+  nicheType      String   @default("LIBRARY")
+  ownerName      String?
+  email          String?
+  phone          String?
+  createdAt      DateTime @default(now())
+}
+
+model Owner {
+  id           String   @id
+  name         String
+  email        String   @unique
+  mobile       String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  pushToken    String?
+}
+
+model Plan {
+  id           String         @id
+  name         String
+  maxStudents  Int
+  price        Float
+  durationDays Int
+  Subscription Subscription[]
+}
+
+model Resource {
+  id             String  @id(map: "Seat_pkey")
+  organizationId String
+  resourceName   String
+  memberId       String? @unique(map: "Seat_studentId_key")
+}
+
+model Subscription {
+  id             String   @id
+  organizationId String
+  planId         String
+  status         String
+  startDate      DateTime
+  endDate        DateTime
+  Plan           Plan     @relation(fields: [planId], references: [id])
+}

@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Core System
+model Owner {
+  id            String         @id @default(uuid())
+  name          String
+  email         String         @unique
+  mobile        String         @unique
+  passwordHash  String
+  pushToken     String?
+  role          String         @default("OWNER") // OWNER, ADMIN, STAFF
+  organizations Organization[] @relation("OrganizationOwner")
+  
+  employerOrgId String?
+  employerOrg   Organization?  @relation("OrganizationStaff", fields: [employerOrgId], references: [id])
+
+  createdAt     DateTime       @default(now())
+}
+
+model Organization {
+  id             String         @id @default(uuid())
+  ownerId        String
+  nicheType      String         @default("LIBRARY") // LIBRARY, GYM, COACHING, etc.
+  businessName   String
+  ownerName      String?
+  email          String?
+  phone          String?
+  address        String?
+  totalResources Int            @default(0)
+  owner          Owner          @relation("OrganizationOwner", fields: [ownerId], references: [id])
+  staffMembers   Owner[]        @relation("OrganizationStaff")
+  members        Member[]
+  resources      Resource[]
+  subscriptions  Subscription[]
+  feeRecords     FeeRecord[]
+  notifications  Notification[]
+  createdAt      DateTime       @default(now())
+}
+
+// SaaS Subscription
+model Plan {
+  id            String         @id @default(uuid())
+  name          String
+  maxStudents   Int
+  price         Float
+  durationDays  Int
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id             String       @id @default(uuid())
+  organizationId String
+  planId         String
+  status         String // ACTIVE, EXPIRED, TRIAL
+  startDate      DateTime
+  endDate        DateTime
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  plan           Plan         @relation(fields: [planId], references: [id])
+}
+
+// Tenant Data
+model Member {
+  id              String       @id @default(uuid())
+  organizationId  String
+  name            String
+  mobile          String
+  parentMobile    String?
+  address         String?
+  batch           String?
+  notes           String?
+  status          String // ACTIVE, EXPIRED, LEFT
+  joiningDate     DateTime     @default(now())
+  membershipStart DateTime?
+  membershipEnd   DateTime?
+  resource        Resource?
+  memberships     Membership[]
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  feeRecords      FeeRecord[]
+}
+
+model Resource {
+  id             String       @id @default(uuid())
+  organizationId String
+  resourceName   String
+  memberId       String?      @unique
+  member         Member?      @relation(fields: [memberId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+}
+
+model Membership {
+  id             String       @id @default(uuid())
+  organizationId String
+  memberId       String
+  startDate      DateTime
+  endDate        DateTime
+  feeAmount      Float
+  member         Member       @relation(fields: [memberId], references: [id])
+}
+
+model FeeRecord {
+  id             String       @id @default(uuid())
+  organizationId String
+  memberId       String
+  amount         Float
+  paymentDate    DateTime
+  paymentMethod  String // CASH, UPI, BANK
+  member         Member       @relation(fields: [memberId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+}
+
+model ActivityLog {
+  id             String   @id @default(uuid())
+  organizationId String
+  action         String // e.g., "MEMBER_CREATED", "FEE_PAID"
+  details        Json
+  createdAt      DateTime @default(now())
+}
+
+model Notification {
+  id             String       @id @default(uuid())
+  organizationId String
+  title          String
+  message        String
+  type           String // e.g., "EXPIRY_WARNING", "FEE_REMINDER"
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id])
+}
